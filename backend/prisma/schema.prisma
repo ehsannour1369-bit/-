@@ -61,7 +61,6 @@ model User {
   gradeLevel      GradeLevel?           @relation(fields: [gradeLevelId], references: [id])
   schoolOwned     School[]              @relation("SchoolOwner")
   schoolHistory   StudentSchoolHistory[]
-  bookGrants      BookGrant[]           @relation("GrantedTo")
   grantsGiven     BookGrant[]           @relation("GrantedBy")
   classStudents   ClassStudent[]
   classTeachers   ClassBookTeacher[]
@@ -94,7 +93,6 @@ model School {
   owner           User                  @relation("SchoolOwner", fields: [ownerId], references: [id])
   currentStudents User[]                @relation("CurrentStudents")
   branches        Branch[]
-  bookGrants      BookGrant[]
   schoolHistory   StudentSchoolHistory[]
 
   @@map("schools")
@@ -397,7 +395,6 @@ model BookGrant {
   grantedAt   DateTime @default(now())
 
   book      Book  @relation(fields: [bookId], references: [id])
-  grantedTo User  @relation("GrantedTo", fields: [grantedToId], references: [id])
   grantedBy User  @relation("GrantedBy", fields: [grantedById], references: [id])
 
   @@map("book_grants")

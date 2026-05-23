@@ -7,6 +7,13 @@ export interface JwtPayload {
   role: Role;
 }
 
+declare module '@fastify/jwt' {
+  interface FastifyJWT {
+    payload: JwtPayload;
+    user: JwtPayload;
+  }
+}
+
 export async function authenticate(request: FastifyRequest, reply: FastifyReply) {
   try {
     await request.jwtVerify();
@@ -23,10 +30,4 @@ export function requireRole(...roles: Role[]) {
       reply.status(403).send({ error: 'Forbidden — insufficient permissions' });
     }
   };
-}
-
-declare module 'fastify' {
-  interface FastifyRequest {
-    user: JwtPayload;
-  }
 }

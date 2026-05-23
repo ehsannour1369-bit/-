@@ -180,7 +180,7 @@ export default async function adminRoutes(app: FastifyInstance) {
 
     const grants = await prisma.bookGrant.findMany({
       where,
-      include: { book: true, grantedTo: { select: { id: true, name: true, role: true } } },
+      include: { book: true },
       orderBy: { grantedAt: 'desc' },
     });
     reply.send({ data: grants });
