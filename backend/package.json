@@ -1,0 +1,30 @@
+{
+  "name": "okidd-backend",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "ts-node src/index.ts",
+    "build": "tsc",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "ts-node prisma/seed.ts"
+  },
+  "dependencies": {
+    "fastify": "^4.26.0",
+    "@fastify/jwt": "^8.0.0",
+    "@fastify/cors": "^9.0.0",
+    "@fastify/static": "^7.0.0",
+    "@fastify/formbody": "^7.4.0",
+    "@prisma/client": "^5.10.0",
+    "prisma": "^5.10.0",
+    "bcrypt": "^5.1.1",
+    "zod": "^3.22.4",
+    "ioredis": "^5.3.2",
+    "dotenv": "^16.4.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "ts-node": "^10.9.2",
+    "@types/node": "^20.11.0",
+    "@types/bcrypt": "^5.0.2"
+  }
+}

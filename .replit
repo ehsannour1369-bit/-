@@ -1,0 +1,6 @@
+run = "cd backend && npm install && npx prisma generate && ts-node src/index.ts"
+entrypoint = "index.html"
+
+[[ports]]
+localPort = 3001
+externalPort = 3001

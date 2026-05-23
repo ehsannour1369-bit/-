@@ -1,0 +1,445 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  admin
+  school
+  school_temp
+  teacher
+  teacher_temp
+  parent
+  parent_temp
+  student
+  student_temp
+}
+
+enum Status {
+  active
+  suspended
+}
+
+enum Gender {
+  male
+  female
+  mixed
+}
+
+enum SchoolType {
+  physical
+  virtual
+}
+
+enum ApprovalStatus {
+  draft
+  pending
+  approved
+  rejected
+}
+
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  passwordHash    String
+  name            String
+  mobile          String?
+  role            Role
+  status          Status    @default(active)
+  avatarId        String?
+  currentSchoolId String?
+  gradeLevelId    String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  avatar          Avatar?               @relation(fields: [avatarId], references: [id])
+  currentSchool   School?               @relation("CurrentStudents", fields: [currentSchoolId], references: [id])
+  gradeLevel      GradeLevel?           @relation(fields: [gradeLevelId], references: [id])
+  schoolOwned     School[]              @relation("SchoolOwner")
+  schoolHistory   StudentSchoolHistory[]
+  bookGrants      BookGrant[]           @relation("GrantedTo")
+  grantsGiven     BookGrant[]           @relation("GrantedBy")
+  classStudents   ClassStudent[]
+  classTeachers   ClassBookTeacher[]
+  parentLinks     ParentStudent[]       @relation("ParentLink")
+  childLinks      ParentStudent[]       @relation("ChildLink")
+  progress        StudentProgress[]
+  skillScores     StudentSkillScore[]
+  pointsLedger    PointsLedger[]
+  gadgets         StudentAvatarGadget[]
+  contentVideos   ContentVideo[]
+  games           Game[]                @relation("GameCreator")
+  gamesApproved   Game[]                @relation("GameApprover")
+  exercises       Exercise[]
+  quizzes         Quiz[]
+  notifications   Notification[]
+
+  @@map("users")
+}
+
+model School {
+  id        String     @id @default(cuid())
+  name      String
+  type      SchoolType @default(physical)
+  status    Status     @default(active)
+  city      String?
+  country   String     @default("Iran")
+  ownerId   String
+  createdAt DateTime   @default(now())
+
+  owner           User                  @relation("SchoolOwner", fields: [ownerId], references: [id])
+  currentStudents User[]                @relation("CurrentStudents")
+  branches        Branch[]
+  bookGrants      BookGrant[]
+  schoolHistory   StudentSchoolHistory[]
+
+  @@map("schools")
+}
+
+model Branch {
+  id       String  @id @default(cuid())
+  schoolId String
+  name     String
+  gender   Gender  @default(mixed)
+  city     String?
+  country  String  @default("Iran")
+
+  school  School  @relation(fields: [schoolId], references: [id])
+  classes Class[]
+
+  @@map("branches")
+}
+
+model GradeLevel {
+  id    String @id @default(cuid())
+  level Int    @unique
+  stage String
+
+  users    User[]
+  subjects Subject[]
+  classes  Class[]
+
+  @@map("grade_levels")
+}
+
+model Subject {
+  id           String @id @default(cuid())
+  name         String
+  gradeLevelId String
+
+  gradeLevel GradeLevel @relation(fields: [gradeLevelId], references: [id])
+  books      Book[]
+  skillTags  SkillTag[]
+
+  @@map("subjects")
+}
+
+model Book {
+  id        String   @id @default(cuid())
+  title     String
+  subjectId String
+  price     Decimal  @default(0)
+  isActive  Boolean  @default(true)
+
+  subject         Subject              @relation(fields: [subjectId], references: [id])
+  lessons         Lesson[]
+  bookGrants      BookGrant[]
+  classStudents   ClassStudent[]
+  classTeachers   ClassBookTeacher[]
+  progressChart   OkiddProgressChart[]
+
+  @@map("books")
+}
+
+model OkiddProgressChart {
+  id                    String @id @default(cuid())
+  bookId                String
+  chapterNo             Int
+  recommendedUnlockWeek Int
+  academicMonth         Int
+
+  book Book @relation(fields: [bookId], references: [id])
+
+  @@map("okidd_progress_chart")
+}
+
+model Lesson {
+  id                     String  @id @default(cuid())
+  bookId                 String
+  chapterNo              Int
+  lessonNo               Int
+  title                  String
+  schoolProgressUnlocked Boolean @default(false)
+  okiddChartUnlockWeek   Int     @default(1)
+
+  book      Book              @relation(fields: [bookId], references: [id])
+  videos    ContentVideo[]
+  games     Game[]
+  exercises Exercise[]
+  quizzes   Quiz[]
+  progress  StudentProgress[]
+
+  @@map("lessons")
+}
+
+model ContentVideo {
+  id               String   @id @default(cuid())
+  lessonId         String
+  hlsUrl           String
+  durationSec      Int      @default(120)
+  watermarkEnabled Boolean  @default(true)
+  uploadedBy       String
+  createdAt        DateTime @default(now())
+
+  lesson   Lesson @relation(fields: [lessonId], references: [id])
+  uploader User   @relation(fields: [uploadedBy], references: [id])
+
+  @@map("content_videos")
+}
+
+model Game {
+  id              String         @id @default(cuid())
+  lessonId        String
+  htmlFileUrl     String
+  scope           String         @default("admin")
+  uploadedBy      String
+  approvalStatus  ApprovalStatus @default(approved)
+  approvedBy      String?
+  rejectionReason String?
+  createdAt       DateTime       @default(now())
+
+  lesson   Lesson  @relation(fields: [lessonId], references: [id])
+  creator  User    @relation("GameCreator", fields: [uploadedBy], references: [id])
+  approver User?   @relation("GameApprover", fields: [approvedBy], references: [id])
+
+  @@map("games")
+}
+
+model SkillTag {
+  id          String  @id @default(cuid())
+  name        String
+  subjectId   String
+  description String?
+
+  subject     Subject             @relation(fields: [subjectId], references: [id])
+  skillScores StudentSkillScore[]
+
+  @@map("skill_tags")
+}
+
+model Exercise {
+  id            String @id @default(cuid())
+  lessonId      String
+  questionsJson Json
+  createdBy     String
+
+  lesson  Lesson @relation(fields: [lessonId], references: [id])
+  creator User   @relation(fields: [createdBy], references: [id])
+
+  @@map("exercises")
+}
+
+model Quiz {
+  id            String @id @default(cuid())
+  lessonId      String
+  questionsJson Json
+  timeLimitSec  Int    @default(30)
+  createdBy     String
+
+  lesson  Lesson @relation(fields: [lessonId], references: [id])
+  creator User   @relation(fields: [createdBy], references: [id])
+
+  @@map("quizzes")
+}
+
+model StudentProgress {
+  id             String    @id @default(cuid())
+  studentId      String
+  lessonId       String
+  videoWatched   Boolean   @default(false)
+  gameScore      Float?
+  exerciseScore  Float?
+  quizScore      Float?
+  compositeScore Float?
+  pointsEarned   Int       @default(0)
+  completedAt    DateTime?
+
+  student User   @relation(fields: [studentId], references: [id])
+  lesson  Lesson @relation(fields: [lessonId], references: [id])
+
+  @@unique([studentId, lessonId])
+  @@map("student_progress")
+}
+
+model StudentSkillScore {
+  id            String   @id @default(cuid())
+  studentId     String
+  skillTagId    String
+  totalAttempts Int      @default(0)
+  correctCount  Int      @default(0)
+  avgScore      Float    @default(0)
+  lastUpdated   DateTime @default(now())
+
+  student  User     @relation(fields: [studentId], references: [id])
+  skillTag SkillTag @relation(fields: [skillTagId], references: [id])
+
+  @@unique([studentId, skillTagId])
+  @@map("student_skill_scores")
+}
+
+model PointsLedger {
+  id           String   @id @default(cuid())
+  userId       String
+  activityType String
+  pointsDelta  Int
+  balanceAfter Int
+  refId        String?
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("points_ledger")
+}
+
+model Avatar {
+  id              String @id @default(cuid())
+  name            String
+  emoji           String
+  themeConfigJson Json   @default("{}")
+  imageUrl        String @default("")
+
+  users   User[]
+  gadgets AvatarGadget[]
+
+  @@map("avatars")
+}
+
+model AvatarGadget {
+  id        String  @id @default(cuid())
+  name      String
+  emoji     String
+  pointCost Int
+  avatarId  String?
+
+  avatar   Avatar?               @relation(fields: [avatarId], references: [id])
+  students StudentAvatarGadget[]
+
+  @@map("avatar_gadgets")
+}
+
+model StudentAvatarGadget {
+  id         String   @id @default(cuid())
+  studentId  String
+  gadgetId   String
+  unlockedAt DateTime @default(now())
+
+  student User         @relation(fields: [studentId], references: [id])
+  gadget  AvatarGadget @relation(fields: [gadgetId], references: [id])
+
+  @@unique([studentId, gadgetId])
+  @@map("student_avatar_gadgets")
+}
+
+model Class {
+  id           String @id @default(cuid())
+  branchId     String
+  gradeLevelId String
+  name         String
+  academicYear String @default("1403-04")
+
+  branch      Branch             @relation(fields: [branchId], references: [id])
+  gradeLevel  GradeLevel         @relation(fields: [gradeLevelId], references: [id])
+  students    ClassStudent[]
+  teachers    ClassBookTeacher[]
+
+  @@map("classes")
+}
+
+model ClassBookTeacher {
+  id        String @id @default(cuid())
+  classId   String
+  bookId    String
+  teacherId String
+
+  class   Class @relation(fields: [classId], references: [id])
+  book    Book  @relation(fields: [bookId], references: [id])
+  teacher User  @relation(fields: [teacherId], references: [id])
+
+  @@unique([classId, bookId, teacherId])
+  @@map("class_book_teachers")
+}
+
+model ClassStudent {
+  id         String   @id @default(cuid())
+  classId    String
+  bookId     String
+  studentId  String
+  enrolledAt DateTime @default(now())
+
+  class   Class @relation(fields: [classId], references: [id])
+  book    Book  @relation(fields: [bookId], references: [id])
+  student User  @relation(fields: [studentId], references: [id])
+
+  @@unique([classId, bookId, studentId])
+  @@map("class_students")
+}
+
+model BookGrant {
+  id          String   @id @default(cuid())
+  bookId      String
+  grantedToId String
+  quantity    Int
+  grantedById String
+  grantedAt   DateTime @default(now())
+
+  book      Book  @relation(fields: [bookId], references: [id])
+  grantedTo User  @relation("GrantedTo", fields: [grantedToId], references: [id])
+  grantedBy User  @relation("GrantedBy", fields: [grantedById], references: [id])
+
+  @@map("book_grants")
+}
+
+model StudentSchoolHistory {
+  id           String    @id @default(cuid())
+  studentId    String
+  schoolId     String
+  academicYear String
+  joinedAt     DateTime  @default(now())
+  leftAt       DateTime?
+
+  student User   @relation(fields: [studentId], references: [id])
+  school  School @relation(fields: [schoolId], references: [id])
+
+  @@unique([studentId, schoolId, academicYear])
+  @@map("student_school_history")
+}
+
+model ParentStudent {
+  id          String    @id @default(cuid())
+  parentId    String
+  studentId   String
+  confirmedAt DateTime?
+
+  parent  User @relation("ParentLink", fields: [parentId], references: [id])
+  student User @relation("ChildLink", fields: [studentId], references: [id])
+
+  @@unique([parentId, studentId])
+  @@map("parent_students")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  body      String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}
